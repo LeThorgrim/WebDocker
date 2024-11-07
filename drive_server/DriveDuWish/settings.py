@@ -80,9 +80,9 @@ WSGI_APPLICATION = 'DriveDuWish.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DATABASE_NAME', 'docker_db'),  # Should be 'docker_db'
-        'USER': os.getenv('DATABASE_USER', 'db_admin'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'db_password'),
+        'NAME': 'docker_db',  # Should be 'docker_db'
+        'USER': 'db_admin',
+        'PASSWORD': 'db_password',
         'HOST': 'db',  # This should match the service name in docker-compose.yml
         'PORT': '5432',
     }
