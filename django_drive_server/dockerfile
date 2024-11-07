@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy requirements.txt and install dependencies
+# dependencies
 RUN pip install Django==5.1.2\
                 sqlparse==0.5.1\
                 psycopg2-binary\
