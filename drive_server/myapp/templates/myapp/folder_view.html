@@ -1,0 +1,285 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contenu de {{ folder.name }}</title>
+    <meta name="description" content="Contenu du dossier {{ folder.name }}">
+    <meta name="keywords" content="Google Drive, HTML, CSS, Démonstration">
+    <link rel="stylesheet" href="{% static 'home.css' %}">
+    <style>
+
+        .drag-over {
+            border: 2px dashed #007bff; /* Indicateur visuel */
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        /* Conteneur des fichiers */
+        .files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px; /* Ajoute de l'espace entre les fichiers */
+        }
+        
+        /* Conteneur d'un fichier */
+        .file {
+            width: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            box-sizing: border-box; /* Ajoute du padding sans affecter la largeur */
+            margin-bottom: 20px; /* Ajoute de l'espace entre les lignes */
+        }
+        
+        /* Conteneur de l'aperçu */
+        .file-preview {
+            width: 100%;
+            height: 150px; /* Hauteur fixe pour l'aperçu */
+            overflow: hidden;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f7f7f7;
+        }
+        
+        /* Styles spécifiques aux images */
+        .file-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover; /* Recadre l'image sans la déformer */
+        }
+        
+        /* Styles pour l'embed PDF */
+        .file-preview embed {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Styles du titre */
+        a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        
+
+
+        .btn-supp:hover {
+            -webkit-transform: scale(1.75); /* Safari and Chrome */
+            -moz-transform: scale(1.75); /* Firefox */
+            -ms-transform: scale(1.75); /* IE 9 */
+            -o-transform: scale(1.75); /* Opera */
+            transform: scale(1.75);
+        }
+        
+        
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="folder-title">{{ folder.name }}</h1>
+        <nav class="nav">
+            <a href="{% url 'mon_drive' %}" class="back-button">← Retour</a>
+        </nav>
+    </header>
+    <div class="sidebar">
+        <div class="profile">
+            <img src="/media/pp.jpg" alt="Photo de profil" class="profile-img" height="100" width="100">
+            {% if user.is_authenticated %}
+            <h2 class="username">{{ user.username }}</h2>
+            {% else %}
+            <h2 class="username"> non connecté </h2>
+            {% endif %}
+        </div>
+        <nav class="menu">
+            <a href="{% url 'mon_drive' %}" id="upload" class="menu-item">Retour</a>
+        </nav>
+    </div>
+    <div class="content">
+        
+        <div class="folders-container">
+            <h2>Dossiers :</h2>
+            <div class="folders">
+                {% for subfolder in subfolders %}
+                <div class="folder" data-folder-id="{{ folder.id }}" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <a href="{% url 'view_folder' subfolder.id %}">
+                            <img src="/media/folder.png" alt="{{ subfolderfolder.name }}" class="folder-icon" height="32" width="32">
+                            {{ subfolder.name }}
+                        </a>
+                        <a href="{% url 'delete_folder' subfolder.id %}" class="btn-supp">❌</a>
+                    </div>  
+                {% empty %}
+                    <li class="empty-message">Aucun sous-dossier disponible</li>
+                {% endfor %}
+                </div>
+        </div>
+        <div class="files-container">
+            <h2>Fichiers</h2>
+            <div class="files">
+                {% for file in files %}
+                <div class="file" data-file-id="{{ file.id }}" draggable="true" ondragstart="drag(event)">
+                    <div class="file-preview" id="preview-{{ file.id }}">
+                    </div>
+                        <a href="{{ file.file.url }}" id="file-title-{{ file.id }}">{{ file.title }}</a>
+                
+                        
+                    <a href="{% url 'delete_file' file.id %}" class="btn-supp">❌</a>
+                    </div>
+                {% empty %}
+                    <p>Aucun fichier disponible</p>
+                {% endfor %}
+            </div>
+       
+    </div>
+</div>
+<script>
+    document.getElementById('file-upload-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        var formData = new FormData(this);
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(response => response.json()).then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    });
+
+    document.getElementById('folder-create-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        var formData = new FormData(this);
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(response => response.json()).then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    });
+
+    function confirmDeleteFile(fileId) {
+        if (confirm("Êtes-vous sûr de vouloir supprimer ce fichier ?")) {
+            fetch("{% url 'delete_file' 0 %}".replace('0', fileId), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            }).then(response => response.json()).then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    }
+
+    function confirmDeleteFolder(folderId) {
+        if (confirm("Êtes-vous sûr de vouloir supprimer ce dossier et tout son contenu ?")) {
+            fetch("{% url 'delete_folder' 0 %}".replace('0', folderId), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            }).then(response => response.json()).then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    }
+
+    function drag(event) {
+        event.dataTransfer.setData("file_id", event.target.getAttribute("data-file-id"));
+    }
+
+    function allowDrop(event) {
+        event.preventDefault();
+    }
+
+    function drop(event) {
+        event.preventDefault();
+        var fileId = event.dataTransfer.getData("file_id");
+        var folderId = event.target.closest('.folder').getAttribute("data-folder-id");
+        fetch("{% url 'move_file_to_folder' %}", {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                file_id: fileId,
+                folder_id: folderId
+            })
+        }).then(response => response.json()).then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+
+    function previewFile(fileUrl) {
+        var previewWindow = window.open(fileUrl, '_blank');
+        previewWindow.focus();
+    }
+    </script>       
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const fileElements = document.querySelectorAll('.file');  // Sélectionne tous les fichiers
+        
+            fileElements.forEach(fileElement => {
+                const fileId = fileElement.dataset.fileId;
+                const previewElement = document.getElementById('preview-' + fileId);
+                const fileUrl = fileElement.querySelector('a').href;  // Récupère l'URL du fichier
+        
+                // Vous pouvez obtenir le type de fichier (image, PDF, audio, etc.)
+                const fileExtension = fileUrl.split('.').pop().toLowerCase();
+        
+                // Logique de prévisualisation en fonction du type de fichier
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+                    // Si c'est une image
+                    const imgPreview = document.createElement('img');
+                    imgPreview.src = fileUrl;
+                    imgPreview.alt = 'Image Preview';
+                    imgPreview.style.maxWidth = '200px'; // Ajustez selon vos besoins
+                    previewElement.appendChild(imgPreview);
+                } else if (fileExtension === 'pdf') {
+                    // Si c'est un fichier PDF
+                    const pdfPreview = document.createElement('iframe');
+                    pdfPreview.src = fileUrl;
+                    pdfPreview.style.width = '200px';
+                    pdfPreview.style.height = '150px';
+                    previewElement.appendChild(pdfPreview);
+                } else if (['mp3', 'wav', 'ogg'].includes(fileExtension)) {
+                    // Si c'est un fichier audio
+                    const audioPreview = document.createElement('audio');
+                    audioPreview.controls = true;
+                    audioPreview.src = fileUrl;
+                    previewElement.appendChild(audioPreview);
+                }else if (['mp4', 'webm', 'ogg'].includes(fileExtension)) {
+                     // Si c'est une vidéo
+                    const videoPreview = document.createElement('video');
+                    videoPreview.controls = true;
+                    videoPreview.src = fileUrl;
+                    previewElement.appendChild(videoPreview);
+                } else {
+                    // Autre type de fichier (vous pouvez ajouter plus de types ici)
+                    previewElement.innerHTML = 'Aperçu non disponible';
+                }
+            });
+        });
+        
+    </script>
+
+</body>
+</html>

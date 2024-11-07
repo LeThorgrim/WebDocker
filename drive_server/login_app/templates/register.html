@@ -1,0 +1,80 @@
+<!-- login_app/templates/register.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            display: flex; /* Use flexbox for centering */
+            flex-direction: column; /* Stack items vertically */
+            align-items: center; /* Center items horizontally */
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px -10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button, .logout-btn {
+            width: 100%; /* Full width for both buttons */
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center; /* Center the text */
+            display: inline-block; /* Allow the anchor tag to act like a block */
+            text-decoration: none; /* Remove underline from anchor */
+        }
+        button:hover, .logout-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Inscription</h2>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert"><p>{{ message }}</p></div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <label for="username">Nom d'utilisateur:</label>
+            <input type="text" name="username" id="username" required>
+            <br>
+            <label for="password">Mot de passe:</label>
+            <input type="password" name="password" id="password" required>
+            <br>
+            <button type="submit">M'INSCRIRE</button>
+        </form>
+
+        <p>Vous avez un compte? <a href="{% url 'login' %}">Se connecter</a></p>
+    </div>
+</body>
+</html>

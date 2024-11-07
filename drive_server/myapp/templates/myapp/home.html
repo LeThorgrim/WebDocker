@@ -1,0 +1,542 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive</title>
+    <meta name="description" content="DriveDuWish">
+    <meta name="keywords" content="Drive">
+    <link rel="stylesheet" href="{% static 'home.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .drag-over {
+            border: 2px dashed #007bff; /* Indicateur visuel */
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        /* Conteneur des fichiers */
+        .files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px; /* Ajoute de l'espace entre les fichiers */
+        }
+        
+        /* Conteneur d'un fichier */
+        .file {
+            width: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            box-sizing: border-box; /* Ajoute du padding sans affecter la largeur */
+            margin-bottom: 20px; /* Ajoute de l'espace entre les lignes */
+        }
+        
+        /* Conteneur de l'aperçu */
+        .file-preview {
+            width: 100%;
+            height: 150px; /* Hauteur fixe pour l'aperçu */
+            overflow: hidden;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f7f7f7;
+        }
+        
+        /* Styles spécifiques aux images */
+        .file-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover; /* Recadre l'image sans la déformer */
+        }
+        
+        /* Styles pour l'embed PDF */
+        .file-preview embed {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Styles du titre */
+        a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+
+        .btn-supp:hover {
+            -webkit-transform: scale(1.75); /* Safari and Chrome */
+            -moz-transform: scale(1.75); /* Firefox */
+            -ms-transform: scale(1.75); /* IE 9 */
+            -o-transform: scale(1.75); /* Opera */
+            transform: scale(1.75);
+        }
+        
+        .chart-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .chart-container canvas {
+            margin: 10px;
+            max-width: 45%;
+            height: auto;
+        }
+
+        .chart-row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+    </style>
+
+</head>
+<body>
+    <header>
+        <h1>Drive</h1>
+        <nav>
+            <a href="#">Se connecter</a>
+        </nav>
+    </header>
+    <div class="sidebar">
+        <div class="profile">
+            <img src="/media/pp.jpg" alt="Photo de profil" class="profile-img" height="100" width="100">
+            {% if user.is_authenticated %}
+            <h2 class="username">{{ user.username }}</h2>
+            {% else %}
+            <h2 class="username"> non connecté </h2>
+            {% endif %}
+        </div>
+        <nav class="menu">
+            <a href="#" id="upload" class="menu-item">Upload</a>
+            <a href="#" id="mon-drive" class="menu-item">Mon Drive</a>
+            <a href="#" id="recents" class="menu-item">Récents</a>
+            <a href="#" id="statistiques" class="menu-item">Statistiques</a>
+            {% if user.is_authenticated %}
+            <a href="#" id="logout" class="menu-item">Gestion du compte</a>
+            {% else %}
+            <a href="#" id="logout" class="menu-item">Se Connecter</a>
+            {% endif %}
+        </nav>
+    </div>
+    <div class="content">
+        <div id="content-home" class="content-section">
+            <h2>Accueil</h2>
+            <p>Contenu pour l'accueil.</p>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
+                    {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div id="content-upload" class="content-section">
+            <h2>Upload</h2>
+            <h3>Télécharger des fichiers</h3>
+            <form method="post" enctype="multipart/form-data" action="{% url 'upload_file' %}">
+                {% csrf_token %}
+                {{ file_form.as_p }}
+                <button type="submit" name="add_file">Ajouter le fichier</button>
+            </form>
+            <h3>Créer un dossier</h3>
+            <form method="post" action="{% url 'upload_file' %}">
+                {% csrf_token %}
+                {{ folder_form.as_p }}
+                <button type="submit" name="add_folder">Ajouter le dossier</button>
+            </form>
+        </div>
+
+        <div id="content-mon-drive" class="content-section">
+            <h2>Mon Drive</h2>
+            <form method="get" action="{% url 'search_files' %}">
+                <input type="text" name="query" placeholder="Rechercher des fichiers" value="{{ query }}" required>
+                <button type="submit">Rechercher</button>
+                {% if query %}
+                    <a href="{% url 'mon_drive' %}" class="cancel-search-button">Annuler la recherche</a>
+                {% endif %}
+            </form>
+        
+            <div class="folders-container">
+                <h3>Dossiers :</h3>
+                <div class="folders">
+                    {% for folder in folders %}
+                    <div class="folder" data-folder-id="{{ folder.id }}" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <a href="{% url 'view_folder' folder.id %}">
+                            <img src="/media/folder.png" alt="{{ folder.name }}" class="folder-icon" height="32" width="32">
+                            {{ folder.name }}
+                        </a>
+                        <a class="btn-supp" href="{% url 'delete_folder' folder.id %}">❌</a>
+                    </div>
+                    {% empty %}
+                        <p>Aucun dossier disponible</p>
+                    {% endfor %}
+                </div>
+            </div>
+        
+            <div class="files-container">
+                <h3>Fichiers hors dossiers :</h3>
+                <div class="files">
+                    {% for file in files %}
+                    <div class="file" data-file-id="{{ file.id }}" draggable="true" ondragstart="drag(event)">
+                        <div class="file-preview" id="preview-{{ file.id }}">
+                        </div>
+                            <a href="{{ file.file.url }}" id="file-title-{{ file.id }}">{{ file.title }}</a>
+
+                            {% if file.folder %}
+                                (Dossier: {{ file.folder.name }})
+                            {% endif %}
+                            <a href="{% url 'delete_file' file.id %}" class="btn-supp">❌</a>
+                        </div>
+                    {% empty %}
+                        <p>Aucun fichier disponible</p>
+                    {% endfor %}
+                </div>
+            </div>    
+            <script>
+                const moveFileUrl = "{% url 'move_file_to_folder' %}"; 
+                console.log(moveFileUrl);
+
+                document.getElementById('file-upload-form').addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    var formData = new FormData(this);
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }).then(response => response.json()).then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    });
+                });
+        
+                document.getElementById('folder-create-form').addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    var formData = new FormData(this);
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }).then(response => response.json()).then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    });
+                });
+        
+                function confirmDeleteFile(fileId) {
+                    if (confirm("Êtes-vous sûr de vouloir supprimer ce fichier ?")) {
+                        fetch("{% url 'delete_file' 0 %}".replace('0', fileId), {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            }
+                        }).then(response => response.json()).then(data => {
+                            if (data.success) {
+                                location.reload();
+                            }
+                        });
+                    }
+                }
+        
+                function confirmDeleteFolder(folderId) {
+                    if (confirm("Êtes-vous sûr de vouloir supprimer ce dossier et tout son contenu ?")) {
+                        fetch("{% url 'delete_folder' 0 %}".replace('0', folderId), {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            }
+                        }).then(response => response.json()).then(data => {
+                            if (data.success) {
+                                location.reload();
+                            }
+                        });
+                    }
+                }
+        
+                function drag(event) {
+                    event.dataTransfer.setData("file_id", event.target.getAttribute("data-file-id"));
+                    
+                }
+        
+                function allowDrop(event) {
+                    event.preventDefault();
+                }
+        
+                function drop(event) {
+                    
+                    event.preventDefault();
+                    var fileId = event.dataTransfer.getData("file_id");
+                    var folderId = event.target.closest('.folder').getAttribute("data-folder-id");
+                    fetch(moveFileUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            file_id: fileId,
+                            folder_id: folderId
+                        })
+                    }).then(response => response.json()).then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    });
+                }
+        
+                function previewFile(fileUrl) {
+                    var previewWindow = window.open(fileUrl, '_blank');
+                    previewWindow.focus();
+                }
+                </script>       
+        </div>
+        
+        <div id="content-recents" class="content-section">
+            <h2>Récents</h2>
+            <p>Contenu pour les fichiers récents.</p>
+        </div>
+        <div id="content-statistiques" class="content-section">
+            <h2>Statistiques</h2>
+            <p>Contenu pour les statistiques.</p>
+            <pre>{{ folder_file_counts|safe }}</pre>
+            <div class="chart-container">
+                <div class="chart-row">
+                    <canvas id="folderChart" ></canvas>
+                    <canvas id="fileChart" ></canvas>
+                </div>
+                <div class="chart-row">
+                    <canvas id="sizeMbChart" ></canvas>
+                </div>
+                <div class="chart-row">
+                    <canvas id="fileTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <script src="{% static 'home.js' %}"></script>
+
+        <div id="content-logout" class="content-section">
+            {% if user.is_authenticated %}
+                <p>Bonjour, {{ user.username }}.</p>
+                <a href="{% url 'logout' %}" class="logButton">Se Déconnecter</a>
+                <p>Voulez vous supprimer votre compte ?</p>
+                <a href="{% url 'delete' %}" class="logButton">Supprimer Mon Compte</a>
+            {% else %}
+                <p>Vous n'êtes pas connecté!</p>
+                <a href="{% url 'login' %}" class="logButton">Se Connecter</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="{% static 'home.js' %}"></script>
+    <script>
+        function confirmDeleteFolder(folderId) {
+            if (confirm("Êtes-vous sûr de vouloir supprimer ce dossier et tout son contenu ?")) {
+                window.location.href = "{% url 'delete_folder' 0 %}".replace('0', folderId);
+            }
+        }
+    </script>
+    
+    <script>
+        const ctx = document.getElementById('folderChart').getContext('2d');
+        const fileChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Nombre de dossiers'],
+                datasets: [{
+                    label: 'Total des dossiers',
+                    data: [{{ folder_count }}],  
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var ctx2 = document.getElementById('fileChart').getContext('2d');
+            var folderFileCounts =  {{ folder_file_count|safe }};
+            var folderNames = folderFileCounts.map(function (item) { return item.folder_name; });
+            var fileCounts = folderFileCounts.map(function (item) { return item.file_count; });
+
+            var chart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: folderNames,
+                    datasets: [{
+                        label: 'Nombre de fichiers',
+                        data: fileCounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+
+
+        var sizeMbjs = JSON.parse('{{ sizeMb|safe }}');
+        //color picker
+        let colorPicker;
+        let colorPicker2;
+        if(sizeMbjs < 50){
+            colorPicker = 'rgba(0, 128, 0, 0.2)';
+            colorPicker2 ='rgba(0, 128, 0, 1)';
+        }else if(sizeMbjs < 80){
+            colorPicker = 'rgba(255, 165, 0, 0.2)';
+            colorPicker2 = 'rgba(255, 165, 0, 1)';
+        }else{
+            colorPicker = 'rgba(255, 0, 0, 0.2)';
+            colorPicker2 = 'rgba(255, 0, 0, 1)';
+        }
+        
+        const ctx2bis = document.getElementById('sizeMbChart').getContext('2d');
+        const fileChartBis = new Chart(ctx2bis, {
+            type: 'bar',
+            data: {
+                labels: ['Poids du drive en Mo'],
+                datasets: [{
+                    label: 'Taille du drive',
+                    data: [{{ sizeMb }}],  
+                    backgroundColor: colorPicker,
+                    borderColor: colorPicker2,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        var ctx3 = document.getElementById('fileTypeChart').getContext('2d');
+        var fileTypeCounts = JSON.parse('{{ file_type_counts|escapejs }}');
+        var labels = Object.keys(fileTypeCounts);
+        var data = Object.values(fileTypeCounts);
+
+        var chart = new Chart(ctx3, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'File Types',
+                    data: data,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'répartition des fichiers '
+                    }
+                }
+            }
+
+
+           
+        });
+
+        
+
+
+
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const fileElements = document.querySelectorAll('.file');  // Sélectionne tous les fichiers
+        
+            fileElements.forEach(fileElement => {
+                const fileId = fileElement.dataset.fileId;
+                const previewElement = document.getElementById('preview-' + fileId);
+                const fileUrl = fileElement.querySelector('a').href;  // Récupère l'URL du fichier
+        
+                // Vous pouvez obtenir le type de fichier (image, PDF, audio, etc.)
+                const fileExtension = fileUrl.split('.').pop().toLowerCase();
+        
+                // Logique de prévisualisation en fonction du type de fichier
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+                    // Si c'est une image
+                    const imgPreview = document.createElement('img');
+                    imgPreview.src = fileUrl;
+                    imgPreview.alt = 'Image Preview';
+                    imgPreview.style.maxWidth = '200px'; // Ajustez selon vos besoins
+                    previewElement.appendChild(imgPreview);
+                } else if (fileExtension === 'pdf') {
+                    // Si c'est un fichier PDF
+                    const pdfPreview = document.createElement('iframe');
+                    pdfPreview.src = fileUrl;
+                    pdfPreview.style.width = '200px';
+                    pdfPreview.style.height = '150px';
+                    previewElement.appendChild(pdfPreview);
+                } else if (['mp3', 'wav', 'ogg'].includes(fileExtension)) {
+                    // Si c'est un fichier audio
+                    const audioPreview = document.createElement('audio');
+                    audioPreview.controls = true;
+                    audioPreview.src = fileUrl;
+                    previewElement.appendChild(audioPreview);
+                }else if (['mp4', 'webm', 'ogg'].includes(fileExtension)) {
+                     // Si c'est une vidéo
+                    const videoPreview = document.createElement('video');
+                    videoPreview.controls = true;
+                    videoPreview.src = fileUrl;
+                    previewElement.appendChild(videoPreview);
+                } else {
+                    // Autre type de fichier (vous pouvez ajouter plus de types ici)
+                    previewElement.innerHTML = 'Aperçu non disponible';
+                }
+            });
+        });
+        
+    </script>
+
+</body>
+</html>
