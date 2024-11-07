@@ -15,7 +15,7 @@ services:
       context: ./node_user_check
     env_file:
       - .env
-    #ports:
+    ports:
       - "8001:8001" # drive port 8001
     depends_on:
       db:
@@ -34,7 +34,7 @@ services:
       - "5432:5432"
     healthcheck: # checks if operational, if not wait and retry
       test: ["CMD-SHELL", "pg_isready -U db_admin -d docker_db"]
-      interval: 10s
+      interval: 6s
       timeout: 5s
       retries: 5
 

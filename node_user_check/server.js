@@ -29,11 +29,11 @@ app.post('/check-user', async (req, res) => {
   const { username } = req.body;
 
   try {
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const result = await pool.query('SELECT * FROM "auth_user" WHERE username = $1', [username]);
     if (result.rows.length > 0) {
-      res.send(`<p>Username "${username}" exists in the database.</p>`);
+      res.send(`Username "${username}" exists in the database.`);
     } else {
-      res.send(`<p>Username "${username}" does not exist in the database.</p>`);
+      res.send(`Username "${username}" does not exist in the database.`);
     }
   } catch (err) {
     console.error(err);

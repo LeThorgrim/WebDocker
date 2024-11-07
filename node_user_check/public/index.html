@@ -67,11 +67,38 @@
 <body>
     <div class="container">
         <h1>Check Username</h1>
-        <form method="POST" action="/check-user">
+        <form id="usernameForm">
             <label for="username">Enter Username:</label>
             <input type="text" id="username" name="username" required placeholder="Username">
             <button type="submit">Check</button>
         </form>
+        <div id="result" class="message"></div>
     </div>
+
+    <script>
+        document.getElementById('usernameForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the form from submitting traditionally
+
+            const username = document.getElementById('username').value;
+            const resultDiv = document.getElementById('result');
+
+            fetch('/check-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `username=${encodeURIComponent(username)}`,
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Update the result div with the server's response
+                resultDiv.innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultDiv.innerHTML = 'An error occurred. Please try again.';
+            });
+        });
+    </script>
 </body>
 </html>
