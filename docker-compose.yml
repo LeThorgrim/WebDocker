@@ -1,7 +1,7 @@
 services:
   drive:
     build: 
-      context: ./drive_server
+      context: ./django_drive_server
     ports:
       - "8000:8000" # drive port 8080
     environment:
